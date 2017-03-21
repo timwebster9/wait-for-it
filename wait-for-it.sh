@@ -32,16 +32,21 @@ wait_for()
     start_ts=$(date +%s)
     while :
     do
-        (echo > /dev/tcp/$HOST/$PORT) >/dev/null 2>&1
-        result=$?
-        if [[ $result -eq 0 ]]; then
+        # original command...
+        #(echo > /dev/tcp/$HOST/$PORT) >/dev/null 2>&1
+
+        # Get the HTTP response only
+        RESPONSE=`curl -I -s -L $HOST:$PORT | grep "HTTP/1.1" | cut -f2 -d ' '`
+
+        #result=$?
+        if [[ $RESPONSE -eq "200" ]]; then
             end_ts=$(date +%s)
             echoerr "$cmdname: $HOST:$PORT is available after $((end_ts - start_ts)) seconds"
             break
         fi
         sleep 1
     done
-    return $result
+    return 0
 }
 
 wait_for_wrapper()
@@ -136,6 +141,7 @@ STRICT=${STRICT:-0}
 CHILD=${CHILD:-0}
 QUIET=${QUIET:-0}
 
+# Make it work on macs
 OS=`uname -s`
 
 if [[ $OS = "Linux" ]]; then
