@@ -17,6 +17,7 @@ Usage:
     -q | --quiet                Don't output any status messages
     -t TIMEOUT | --timeout=TIMEOUT
                                 Timeout in seconds, zero for no timeout
+    -r RESOURCE | --resource    Specify a resource on the server to be available
     -- COMMAND ARGS             Execute command with args after the test finishes
 USAGE
     exit 1
@@ -29,6 +30,13 @@ wait_for()
     else
         echoerr "$cmdname: waiting for $HOST:$PORT without a timeout"
     fi
+
+    if [[ $RESOURCE != "" ]]; then
+            TARGET="$HOST:$PORT/$RESOURCE"
+        else
+            TARGET="$HOST:$PORT"
+    fi
+
     start_ts=$(date +%s)
     while :
     do
@@ -36,7 +44,8 @@ wait_for()
         #(echo > /dev/tcp/$HOST/$PORT) >/dev/null 2>&1
 
         # Get the HTTP response only
-        RESPONSE=`curl -I -s -L $HOST:$PORT | grep "HTTP/1.1" | cut -f2 -d ' '`
+        echo "*** TARGET: $TARGET"
+        RESPONSE=`curl -I -s -L $TARGET | grep "HTTP/1.1" | cut -f2 -d ' '`
 
         #result=$?
         if [[ $RESPONSE -eq "200" ]]; then
@@ -53,9 +62,9 @@ wait_for_wrapper()
 {
     # In order to support SIGINT during timeout: http://unix.stackexchange.com/a/57692
     if [[ $QUIET -eq 1 ]]; then
-        $TIMEOUT_CMD $TIMEOUT $0 --quiet --child --host=$HOST --port=$PORT --timeout=$TIMEOUT &
+        $TIMEOUT_CMD $TIMEOUT $0 --quiet --child --host=$HOST --port=$PORT --resource=$RESOURCE --timeout=$TIMEOUT &
     else
-        $TIMEOUT_CMD $TIMEOUT $0 --child --host=$HOST --port=$PORT --timeout=$TIMEOUT &
+        $TIMEOUT_CMD $TIMEOUT $0 --child --host=$HOST --port=$PORT --resource=$RESOURCE --timeout=$TIMEOUT &
     fi
     PID=$!
     trap "kill -INT -$PID" INT
@@ -87,6 +96,14 @@ do
         ;;
         -s | --strict)
         STRICT=1
+        shift 1
+        ;;
+        -r)
+        RESOURCE="$2"
+        shift 2
+        ;;
+        --resource=*)
+        RESOURCE="${1#*=}"
         shift 1
         ;;
         -h)
@@ -141,7 +158,7 @@ STRICT=${STRICT:-0}
 CHILD=${CHILD:-0}
 QUIET=${QUIET:-0}
 
-# Make it work on macs
+# Make it work on mac
 OS=`uname -s`
 
 if [[ $OS = "Linux" ]]; then
@@ -150,7 +167,7 @@ elif [[ $OS = "Darwin" ]]; then
     if hash gtimeout 2>/dev/null; then
         TIMEOUT_CMD="gtimeout"
     else
-        echo "It looks like you're using macOS and there is no suitable timeout utility installed.  Install gtimeout by typing: brew install coreutils"
+        echo "It looks like you are using macOS and there is no suitable timeout utility installed.  Install gtimeout by typing: brew install coreutils"
         exit 1
     fi
 fi
