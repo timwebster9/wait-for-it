@@ -145,7 +145,7 @@ elif [[ $OS = "Darwin" ]]; then
         TIMEOUT_CMD="gtimeout"
     else
         echo "It looks like you're using macOS and there is no suitable timeout utility installed.  Install gtimeout by typing: brew install coreutils"
-        exit
+        exit 1
     fi
 fi
 
