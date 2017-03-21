@@ -48,9 +48,9 @@ wait_for_wrapper()
 {
     # In order to support SIGINT during timeout: http://unix.stackexchange.com/a/57692
     if [[ $QUIET -eq 1 ]]; then
-        timeout $TIMEOUT $0 --quiet --child --host=$HOST --port=$PORT --timeout=$TIMEOUT &
+        $TIMEOUT_CMD $TIMEOUT $0 --quiet --child --host=$HOST --port=$PORT --timeout=$TIMEOUT &
     else
-        timeout $TIMEOUT $0 --child --host=$HOST --port=$PORT --timeout=$TIMEOUT &
+        $TIMEOUT_CMD $TIMEOUT $0 --child --host=$HOST --port=$PORT --timeout=$TIMEOUT &
     fi
     PID=$!
     trap "kill -INT -$PID" INT
@@ -135,6 +135,19 @@ TIMEOUT=${TIMEOUT:-15}
 STRICT=${STRICT:-0}
 CHILD=${CHILD:-0}
 QUIET=${QUIET:-0}
+
+OS=`uname -s`
+
+if [[ $OS = "Linux" ]]; then
+    TIMEOUT_CMD="timeout"
+elif [[ $OS = "Darwin" ]]; then
+    if hash gtimeout 2>/dev/null; then
+        TIMEOUT_CMD="gtimeout"
+    else
+        echo "It looks like you're using macOS and there is no suitable timeout utility installed.  Install gtimeout by typing: brew install coreutils"
+        exit
+    fi
+fi
 
 if [[ $CHILD -gt 0 ]]; then
     wait_for
